@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    <style type="text/css">
+        .chart path:hover {
+            fill-opacity: .7;
+            cursor: pointer;
+        }
+        div.tooltip {   
+            position: absolute;           
+            text-align: center;           
+            width: 60px;                  
+            height: 28px;                 
+            padding: 2px;             
+            font: 12px sans-serif;        
+            background: white;   
+            border: 0px;      
+            border-radius: 8px;           
+            pointer-events: none;         
+        }
+        body {
+            font: 11px sans-serif;
+        }
+        .legend {
+            position:absolute;
+            left:800px;
+            top:350px;
+        }
+        .form-select {
+            max-width: fit-content;
+            margin-top: 10px;
+        }
+        .dropdown-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .dropdown {
+            margin-right: 10px;
+        }
+        .chart-container {
+            display: flex;
+            align-items: stretch;
+        }
+        .chart {
+            flex: 1;
+            padding: 20px; /* Adjust the spacing around the chloropleth */
+        }
+        .radviz-chart {
+            flex: 1;
+            padding: 20px; /* Adjust the spacing around the Radviz charts */
+        }
+        .center{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 1%;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="center">Exploring Labour Market Dynamics in the USA</h1>
+    <div class="dropdown-container" style="padding-left:10px;padding-top:10px">
+        <div class="dropdown" style="display:flex">
+            <div>
+                <label for="statelevelDropdown">State/Country Level:</label>
+                <select id="statelevelDropdown" class="form-select">
+                    <option value="State">State</option>
+                    <option value="Country">Country</option>
+                </select>
+            </div>
+            <div style="margin-left: 4%;" id="Countryleveldropdown">
+                <label for="countrylevelcategoryDropdown">Select Category:</label>
+                <select id="countrylevelcategoryDropdown" class="form-select">
+                    <option value="education">Education</option>
+                    <option value="demographic">Demographic</option>
+                    <option value="gender">Gender</option>
+                </select>
+            </div>
+            <div style="margin-left: 2%;" id="Statelevelcategorydropdown">
+                <label for="demographicDropdown">Select Category:</label>
+                <select id="demographicDropdown" class="form-select">
+                    <optgroup label="demographic">
+                        <option value="White">White</option>
+                        <option value="Black">Black</option>
+                        <option selected value="Native American/American Indian">Native American/American Indian</option>
+                        <option value="Asian-Pacific Islander">Asian-Pacific Islander</option>
+                        <option value="Hispanic/Latino">Hispanic/Latino</option>
+                        <option value="Multiracial">Multiracial</option>
+                    </optgroup>
+                    <optgroup label="ageGroup">
+                        <option value="Under25">Below 25</option>
+                        <option value="25To44">25 - 44</option>
+                        <option value="45To64">45-64</option>
+                        <option value="65Above">65 and Above</option>
+                    </optgroup>
+                    <optgroup label="gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </optgroup>
+                    <optgroup label="education">
+                        <option value="LessthanHighSchool">LessthanHighSchool</option>
+                        <option value="HighSchoolGraduate">HighSchoolGraduate</option>
+                        <option value="SomeCollegeDegree">SomeCollegeDegree</option>
+                        <option value="BachelorDegree">BachelorDegree</option>
+                        <option value="AdvancedDegree">AdvancedDegree</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        <div class="dropdown" style="display: flex;" id="contrastSection">
+            <h5 style="padding-top: 4%; padding-right: 20px; margin-bottom: 0;" id="label-for-spiderweb">
+                <span id="stateName">Alabama</span> vs.             </h5>
+                <select id="statesDropdown" class="form-select">
+                    <option value="National">National</option>
+                </select>
+                <h5 style="padding-top: 4%; padding-left: 20px; margin-bottom: 0;" id="label-for-spiderweb"> Average Contrast.</h5>
+        </div>
+    </div>
+    <div class="chart-container">
+        <div class="chart" id="PopulationMap"></div>
+        <div class="radviz-chart">
+            <div id="RadialChart3"></div>
+            <div id="RadialChart1"></div>
+        </div>
+        <div class="radviz-chart">
+            <div id="StackedBarChart"></div>
+            <div id="RadialChart4"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        displayState();
+        document.getElementById('Countryleveldropdown').style.display = 'none'
+        d3.select("#statelevelDropdown").on("change", function () {
+            var selectedlevel = d3.select(this).property("value");
+            d3.select("#PopulationMap").selectAll('*').remove();
+            d3.select("#RadialChart3").selectAll('*').remove();
+            d3.select("#RadialChart1").selectAll('*').remove();
+            d3.select("#RadialChart4").selectAll('*').remove();
+            d3.select("#StackedBarChart").selectAll('*').remove();
+            if(selectedlevel == 'State'){
+                displayState();
+                document.getElementById('Statelevelcategorydropdown').style.display = 'block'
+                document.getElementById('contrastSection').style.display = 'block'
+                document.getElementById('Countryleveldropdown').style.display = 'none'
+            }
+            else{
+                document.getElementById('Countryleveldropdown').style.display = 'block'
+                document.getElementById('contrastSection').style.display = 'none'
+                document.getElementById('Statelevelcategorydropdown').style.display = 'none'
+                displayCountry();
+            }
+        });
+        function displayCountry(){
+            drawEducationLevel();
+            d3.select("#countrylevelcategoryDropdown").on("change", function () {
+                var selectedlevel = d3.select(this).property("value");
+                d3.select("#PopulationMap").selectAll('*').remove();
+                if(selectedlevel == 'education'){
+                    drawEducationLevel();
+                }else if(selectedlevel == 'gender'){
+                    drawGenderData();
+                }
+                else if(selectedlevel == 'demographic'){
+                    drawDemographicData();
+                }
+            })
+            function drawDemographicData(){
+                d3.csv("./median_average_wages.csv").then(function (data) {
+                    const color = ["#90EE90", "#ADD8E6", "#FF6961",];
+                    const categoryKeys = ['white_median', 'black_median', 'hispanic_median'];
+              
+                    // Create SVG and padding for the chart
+                    const svg = d3
+                      .select("#PopulationMap")
+                      .append("svg")
+                      .attr("height", 600)
+                      .attr("width", 1500);
+              
+                    const strokeWidth = 1.5;
+                    const margin = { top: 30, bottom: 50, left: 30, right: 20 };
+                    const chart = svg.append("g").attr("transform", `translate(${margin.left},0)`);
+              
+                    const width = +svg.attr("width") - margin.left - margin.right - strokeWidth * 2;
+                    const height = +svg.attr("height") - margin.top - margin.bottom;
+                    const grp = chart
+                      .append("g")
+                      .attr("transform", `translate(-${margin.left - strokeWidth},-${margin.top})`);
+              
+                    // Create stack
+                    const stack = d3.stack().keys(categoryKeys);
+                    const stackedValues = stack(data);
+                    const stackedData = [];
+              
+                    // Copy the stack offsets back into the data.
+                    stackedValues.forEach((layer, index) => {
+                      const currentStack = [];
+                      layer.forEach((d, i) => {
+                        currentStack.push({
+                          values: d,
+                          year: data[i].year
+                        });
+                      });
+                      stackedData.push(currentStack);
+                      console.log(stackedData);
+                    });
+              
+                    // Create scales
+                    const yScale = d3
+                      .scaleLinear()
+                      .range([height, 0])
+                      .domain([0, d3.max(stackedValues[stackedValues.length - 1], dp => dp[1])]);
+              
+                    const xScale = d3
+                      .scaleLinear()
+                      .range([0, width])
+                      .domain(d3.extent(data, dataPoint => dataPoint.year));
+              
+                    const area = d3
+                      .area()
+                      .x(dataPoint => xScale(dataPoint.year))
+                      .y0(dataPoint => yScale(dataPoint.values[0]))
+                      .y1(dataPoint => yScale(dataPoint.values[1]));
+              
+                    const series = grp
+                      .selectAll(".series")
+                      .data(stackedData)
+                      .enter()
+                      .append("g")
+                      .attr("class", "series");
+              
+                    series
+                      .append("path")
+                      .attr("transform", `translate(${margin.left},0)`)
+                      .style("fill", (d, i) => color[i])
+                      .attr("stroke", "steelblue")
+                      .attr("stroke-linejoin", "round")
+                      .attr("stroke-linecap", "round")
+                      .attr("stroke-width", strokeWidth)
+                      .attr("d", d => area(d));
+              
+                    
+              
+                    // Add title for the graph
+                    chart
+                      .append("text")
+                      .attr("x", width / 2)
+                      .attr("y", 20)
+                      .attr("text-anchor", "middle")
+                      .style("font-size", "16px")
+                      .style("font-weight", "bold")
+                      .text("Wages by Demographic Over Years");
+              
+                    // Add legend
+                    const legend = chart
+                      .append("g")
+                      .attr("class", "legend")
+                      .attr("transform", `translate(${width - 150},${margin.top})`);
+              
+                    legend
+                      .selectAll("rect")
+                      .data(color)
+                      .enter()
+                      .append("rect")
+                      .attr("x", 0)
+                      .attr("y", (d, i) => i * 20)
+                      .attr("width", 18)
+                      .attr("height", 18)
+                      .style("fill", d => d)
+                      .style("stroke", "black")  // Add this line to set the border color
+                      .style("stroke-width", 1);
+              
+                    legend
+                      .selectAll("text")
+                      .data(categoryKeys)
+                      .enter()
+                      .append("text")
+                      .attr("x", 25)
+                      .attr("y", (d, i) => i * 20 + 9)
+                      .attr("dy", "0.35em")
+                      .text(d => d);
+                      
+                    // Add the X Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0,${height})`)
+                      .call(d3.axisBottom(xScale).ticks(data.length));
+              
+                    // Add the Y Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0, 0)`)
+                      .call(d3.axisLeft(yScale));
+                  });
+            }
+            function drawGenderData(){
+                d3.csv("./median_average_wages.csv").then(function (data) {
+                    const color = ["#90EE90", "#ADD8E6"];
+                    const categoryKeys = ['men_median', 'women_median'];
+              
+                    // Create SVG and padding for the chart
+                    const svg = d3
+                      .select("#PopulationMap")
+                      .append("svg")
+                      .attr("height", 600)
+                      .attr("width", 1500);
+              
+                    const strokeWidth = 1.5;
+                    const margin = { top: 30, bottom: 50, left: 30, right: 20 };
+                    const chart = svg.append("g").attr("transform", `translate(${margin.left},0)`);
+              
+                    const width = +svg.attr("width") - margin.left - margin.right - strokeWidth * 2;
+                    const height = +svg.attr("height") - margin.top - margin.bottom;
+                    const grp = chart
+                      .append("g")
+                      .attr("transform", `translate(-${margin.left - strokeWidth},-${margin.top})`);
+              
+                    // Create stack
+                    const stack = d3.stack().keys(categoryKeys);
+                    const stackedValues = stack(data);
+                    const stackedData = [];
+              
+                    // Copy the stack offsets back into the data.
+                    stackedValues.forEach((layer, index) => {
+                      const currentStack = [];
+                      layer.forEach((d, i) => {
+                        currentStack.push({
+                          values: d,
+                          year: data[i].year
+                        });
+                      });
+                      stackedData.push(currentStack);
+                      console.log(stackedData);
+                    });
+              
+                    // Create scales
+                    const yScale = d3
+                      .scaleLinear()
+                      .range([height, 0])
+                      .domain([0, d3.max(stackedValues[stackedValues.length - 1], dp => dp[1])]);
+              
+                    const xScale = d3
+                      .scaleLinear()
+                      .range([0, width])
+                      .domain(d3.extent(data, dataPoint => dataPoint.year));
+              
+                    const area = d3
+                      .area()
+                      .x(dataPoint => xScale(dataPoint.year))
+                      .y0(dataPoint => yScale(dataPoint.values[0]))
+                      .y1(dataPoint => yScale(dataPoint.values[1]));
+              
+                    const series = grp
+                      .selectAll(".series")
+                      .data(stackedData)
+                      .enter()
+                      .append("g")
+                      .attr("class", "series");
+              
+                    series
+                      .append("path")
+                      .attr("transform", `translate(${margin.left},0)`)
+                      .style("fill", (d, i) => color[i])
+                      .attr("stroke", "steelblue")
+                      .attr("stroke-linejoin", "round")
+                      .attr("stroke-linecap", "round")
+                      .attr("stroke-width", strokeWidth)
+                      .attr("d", d => area(d));
+              
+                    
+              
+                    // Add title for the graph
+                    chart
+                      .append("text")
+                      .attr("x", width / 2)
+                      .attr("y", 20)
+                      .attr("text-anchor", "middle")
+                      .style("font-size", "16px")
+                      .style("font-weight", "bold")
+                      .text("Wages by Gender Over Years");
+              
+                    // Add legend
+                    const legend = chart
+                      .append("g")
+                      .attr("class", "legend")
+                      .attr("transform", `translate(${width - 150},${margin.top})`);
+              
+                    legend
+                      .selectAll("rect")
+                      .data(color)
+                      .enter()
+                      .append("rect")
+                      .attr("x", 0)
+                      .attr("y", (d, i) => i * 20)
+                      .attr("width", 18)
+                      .attr("height", 18)
+                      .style("fill", d => d)
+                      .style("stroke", "black")  // Add this line to set the border color
+                      .style("stroke-width", 1);
+              
+                    legend
+                      .selectAll("text")
+                      .data(categoryKeys)
+                      .enter()
+                      .append("text")
+                      .attr("x", 25)
+                      .attr("y", (d, i) => i * 20 + 9)
+                      .attr("dy", "0.35em")
+                      .text(d => d);
+                      
+                    // Add the X Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0,${height})`)
+                      .call(d3.axisBottom(xScale).ticks(data.length));
+              
+                    // Add the Y Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0, 0)`)
+                      .call(d3.axisLeft(yScale));
+                  });
+            }
+            function drawEducationLevel(){
+                d3.csv("./wages_by_education.csv").then(function (data) {
+                    const color = ["#90EE90", "#ADD8E6", "#FF6961", "#FFFFE0", "#B19CD9"];
+                    const categoryKeys = ['less_than_hs', 'high_school', 'some_college', 'bachelors_degree', 'advanced_degree'];
+              
+                    // Create SVG and padding for the chart
+                    const svg = d3
+                      .select("#PopulationMap")
+                      .append("svg")
+                      .attr("height", 600)
+                      .attr("width", 1500);
+              
+                    const strokeWidth = 1.5;
+                    const margin = { top: 30, bottom: 50, left: 30, right: 20 };
+                    const chart = svg.append("g").attr("transform", `translate(${margin.left},0)`);
+              
+                    const width = +svg.attr("width") - margin.left - margin.right - strokeWidth * 2;
+                    const height = +svg.attr("height") - margin.top - margin.bottom;
+                    const grp = chart
+                      .append("g")
+                      .attr("transform", `translate(-${margin.left - strokeWidth},-${margin.top})`);
+              
+                    // Create stack
+                    const stack = d3.stack().keys(categoryKeys);
+                    const stackedValues = stack(data);
+                    const stackedData = [];
+              
+                    // Copy the stack offsets back into the data.
+                    stackedValues.forEach((layer, index) => {
+                      const currentStack = [];
+                      layer.forEach((d, i) => {
+                        currentStack.push({
+                          values: d,
+                          year: data[i].year
+                        });
+                      });
+                      stackedData.push(currentStack);
+                      console.log(stackedData);
+                    });
+              
+                    // Create scales
+                    const yScale = d3
+                      .scaleLinear()
+                      .range([height, 0])
+                      .domain([0, d3.max(stackedValues[stackedValues.length - 1], dp => dp[1])]);
+              
+                    const xScale = d3
+                      .scaleLinear()
+                      .range([0, width])
+                      .domain(d3.extent(data, dataPoint => dataPoint.year));
+              
+                    const area = d3
+                      .area()
+                      .x(dataPoint => xScale(dataPoint.year))
+                      .y0(dataPoint => yScale(dataPoint.values[0]))
+                      .y1(dataPoint => yScale(dataPoint.values[1]));
+              
+                    const series = grp
+                      .selectAll(".series")
+                      .data(stackedData)
+                      .enter()
+                      .append("g")
+                      .attr("class", "series");
+              
+                    series
+                      .append("path")
+                      .attr("transform", `translate(${margin.left},0)`)
+                      .style("fill", (d, i) => color[i])
+                      .attr("stroke", "steelblue")
+                      .attr("stroke-linejoin", "round")
+                      .attr("stroke-linecap", "round")
+                      .attr("stroke-width", strokeWidth)
+                      .attr("d", d => area(d));
+              
+                    
+              
+                    // Add title for the graph
+                    chart
+                      .append("text")
+                      .attr("x", width / 2)
+                      .attr("y", 20)
+                      .attr("text-anchor", "middle")
+                      .style("font-size", "16px")
+                      .style("font-weight", "bold")
+                      .text("Wages by Education Level Over Years");
+              
+                    // Add legend
+                    const legend = chart
+                      .append("g")
+                      .attr("class", "legend")
+                      .attr("transform", `translate(${width - 150},${margin.top})`);
+              
+                    legend
+                      .selectAll("rect")
+                      .data(color)
+                      .enter()
+                      .append("rect")
+                      .attr("x", 0)
+                      .attr("y", (d, i) => i * 20)
+                      .attr("width", 18)
+                      .attr("height", 18)
+                      .style("fill", d => d)
+                      .style("stroke", "black")  // Add this line to set the border color
+                      .style("stroke-width", 1);;
+              
+                    legend
+                      .selectAll("text")
+                      .data(categoryKeys)
+                      .enter()
+                      .append("text")
+                      .attr("x", 25)
+                      .attr("y", (d, i) => i * 20 + 9)
+                      .attr("dy", "0.35em")
+                      .text(d => d);
+                      
+                    // Add the X Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0,${height})`)
+                      .call(d3.axisBottom(xScale).ticks(data.length));
+              
+                    // Add the Y Axis
+                    chart
+                      .append("g")
+                      .attr("transform", `translate(0, 0)`)
+                      .call(d3.axisLeft(yScale));
+                  });
+            }
+            
+        }
+        function displayState(){
+            var width = 800;
+            var height = 500;
+            var projection = d3.geoAlbersUsa()
+                               .translate([width/2, height/2])
+                               .scale([1000]); // Adjust the scale for zoom
+            var path = d3.geoPath()
+                           .projection(projection);
+    
+            var svg = d3.select("#PopulationMap")
+                        .append("svg")
+                        .attr("width", width)
+                        .attr("height", height);
+    
+            var div = d3.select("body")
+                        .append("div")   
+                        .attr("class", "tooltip")               
+                        .style("opacity", 0);
+            var stateNames = [];
+            var selectedStateforContrast = 'National'
+            function fillColor(wholeData, data, field) {
+                console.log(wholeData)
+                let minValue = d3.min(data, t_data => +t_data[field]);
+                let maxValue = d3.max(data, t_data => +t_data[field]);
+                // Use a linear color scale
+                var colorScale = d3.scaleLinear()
+                    .domain([minValue, maxValue])
+                    .range(["#ffffff", "#0000ff"]);
+                
+                svg.selectAll('path')
+                    .attr('fill', d => colorScale(data.find(state => state.State === d.properties.name)[field]))
+                    .on("click", function(d) {
+                        //getAllStateData(wholeData,d)
+                        //console.log(d)
+                        document.getElementById('stateName').innerHTML = d.srcElement.__data__.properties.name
+                        plotAgeGroupSpiderChart(d.srcElement.__data__.properties.name)
+                        plotDemographicSpiderChart(d.srcElement.__data__.properties.name)
+                        plotEducationSpiderChart(d.srcElement.__data__.properties.name)
+                        drawStackedBarChart(d.srcElement.__data__.properties.name)
+                    });
+            }
+    
+            function getAllStateData(wholeData,d){
+                console.log(wholeData.filter(function(item) {
+                    return item.State === d.srcElement.__data__.properties.name;
+                }))
+            }
+    
+            function changeShading(category, categoryValue) {
+                if (category == 'demographic') {
+                    d3.csv("./wages-by-demographics-2021.csv").then(function (demographicsData) {
+                        var data = demographicsData.filter(function (d) {
+                            return d.Race === categoryValue;
+                        });
+                        fillColor(demographicsData, data, 'AverageWeeklyEarnings');
+                    });
+                }
+                else if (category == 'ageGroup') {
+                    d3.csv("./wages-by-age-groups-2021.csv").then(function (ageGroupData) {
+                        fillColor(ageGroupData, ageGroupData, categoryValue);
+                    });
+                }
+                else if (category == 'gender') {
+                    d3.csv("./wages-by-gender-2021.csv").then(function (genderData) {
+                        var data = genderData.filter(function (d) {
+                            return d.Gender === categoryValue;
+                        });
+                        fillColor(genderData, data, 'AverageWeeklyEarnings');
+                    });
+                }
+                else if (category == 'education') {
+                    d3.csv("./education_state-wise_2021.csv").then(function (educationGroupData) {
+                        fillColor(educationGroupData, educationGroupData, categoryValue);
+                    });
+                }
+            }
+    
+            d3.json("us-states.json").then(function (json) {
+                svg.selectAll("path")
+                    .data(json.features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .style("stroke", "#fff")
+                    .style("stroke-width", "1");
+    
+                svg.selectAll("circle")
+                    .data(json.features)
+                    .enter()
+                    .append("circle")
+                    .attr("cx", d => path.centroid(d)[0])
+                    .attr("cy", d => path.centroid(d)[1])
+                    .attr("r", 3)  // Adjust the radius of the point
+                    .style("fill", "345232")  // Adjust the color of the point
+                    .style("opacity", 0.8);
+                
+                json.features.forEach(function (d) {
+                    stateNames.push(d.properties.name);
+                });
+        
+                // Populate the states dropdown
+                var statesDropdown = d3.select("#statesDropdown");
+                statesDropdown.selectAll("option")
+                    .data(stateNames)
+                    .enter()
+                    .append("option")
+                    .text(function (d) { return d; })
+                    .attr("value", function (d) { return d; });
+                
+                    statesDropdown.on("change", function () {
+                        selectedStateforContrast = d3.select(this).property("value");
+                        document.getElementById('stateName').innerHTML = 'Alabama'
+                        plotAgeGroupSpiderChart('Alabama');
+                        plotDemographicSpiderChart('Alabama')
+                        plotEducationSpiderChart('Alabama');
+                        drawStackedBarChart('Alabama')
+                        console.log("Selected State: ", selectedStateforContrast);
+                    });
+                    
+                    svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", 14)
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-weight", "bold")
+                .text("Heat Map on Average Wages - 2021 for Demographics/ Age Groups / Gender/ Education Level");
+    
+                svg.selectAll("text")
+                    .data(json.features)
+                    .enter()
+                    .append("text")
+                    .attr("x", d => path.centroid(d)[0] + 3)
+                    .attr("y", d => path.centroid(d)[1] - 9)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "8px")  // Adjust the font size of the state names
+                    .style("fill", "black")  // Adjust the color of the state names
+                    .text(d => d.properties.name);
+    
+                changeShading('demographic', "Native American/American Indian");
+    
+                d3.select("#demographicDropdown").on("change", function () {
+                    var selectedDemographic = d3.select(this).property("value");
+                    changeShading(d3.select(this.options[this.selectedIndex]).property('parentNode').label, selectedDemographic);
+                });
+            });
+    
+            let Radwidth = 250;
+            let Radheight = 250;
+            let RadSvg1 = d3.select("#RadialChart1")
+                .append("svg")
+                .attr("width", Radwidth)
+                .attr("height", Radheight);
+                    
+            let RadSvg3 = d3.select("#RadialChart3")
+                .append("svg")
+                .attr("width", Radwidth)
+                .attr("height", Radheight);
+            let RadSvg4 = d3.select("#RadialChart4")
+                .append("svg")
+                .attr("width", Radwidth)
+                .attr("height", Radheight);
+            
+            let radialScale = d3.scaleLinear()
+                .domain([0, 8])
+                .range([0, 75]);
+            let ticks = [2,4,6,8,10];
+    
+            plotAgeGroupSpiderChart('Alabama')
+            function plotAgeGroupSpiderChart(state){
+                RadSvg1.selectAll("path").remove();
+                d3.csv("./wages-by-age-groups-2021.csv").then(function (ageGroupData) {
+                    let filteredData = ageGroupData.filter(obj => (obj.State === selectedStateforContrast) || (obj.State === state));
+                    let features = Object.keys(filteredData[0]).filter(element => element !== "State");
+                    let normalizationScales = {};
+                    features.forEach(feature => {
+                        normalizationScales[feature] = d3.scaleLinear()
+                            .domain([d3.min(ageGroupData, d => +d[feature]), d3.max(ageGroupData, d => +d[feature])])
+                            .range([1, 9]);
+                    });
+        
+                    RadSvg1.selectAll("circle")
+                        .data(ticks)
+                        .join(
+                            enter => enter.append("circle")
+                                .attr("cx", Radwidth / 2)
+                                .attr("cy", Radheight / 2)
+                                .attr("fill", "none")
+                                .attr("stroke", "#aaaaaa")
+                                .attr("r", d => radialScale(d))
+                        );
+        
+                    function angleToCoordinate(angle, value){
+                        let x = Math.cos(angle) * radialScale(value);
+                        let y = Math.sin(angle) * radialScale(value);
+                        return {"x": Radwidth / 2 + x, "y": Radheight / 2 - y};
+                    }
+        
+                    let featureData = features.map((f, i) => {
+                        let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                        return {
+                            "name": f,
+                            "angle": angle,
+                            "line_coord": angleToCoordinate(angle, 10),
+                            "label_coord": angleToCoordinate(angle, 10.5)
+                        };
+                    });
+        
+                    RadSvg1.selectAll("line")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("line")
+                                .attr("x1", Radwidth / 2)
+                                .attr("y1", Radheight / 2)
+                                .attr("x2", d => d.line_coord.x)
+                                .attr("y2", d => d.line_coord.y)
+                                .attr("stroke","#aaaaaa")
+                        );
+        
+                    // draw axis label
+                    RadSvg1.selectAll(".axislabel")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("text")
+                                .attr("x", d => d.label_coord.x - 10)
+                                .attr("y", d => d.label_coord.y + 3)
+                                .text(d => d.name)
+                        );
+                    
+                        
+                    let line = d3.line()
+                        .x(d => d.x)
+                        .y(d => d.y);
+        
+                    let colors = ["red","blue"];
+                    
+                    for(let i=0;i<filteredData.length;i++){
+                        let dataPoints = features.map(f => normalizationScales[f](filteredData[i][f]));
+            
+                        RadSvg1.append("path")
+                            .datum(getPathCoordinates(dataPoints))
+                            .attr("d", line)
+                            .attr("stroke-width", 3)
+                            .attr("stroke", colors[i])
+                            .attr("fill", colors[i])
+                            .attr("stroke-opacity", 1)
+                            .attr("opacity", 0.7);
+                        }
+                    function getPathCoordinates(data_points){
+                        let coordinates = [];
+                        for (var i = 0; i < features.length; i++){
+                            let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                            coordinates.push(angleToCoordinate(angle, data_points[i]));
+                        }
+                        return coordinates;
+                    }
+    
+                });
+            }
+    
+            plotDemographicSpiderChart('Alabama')
+            function plotDemographicSpiderChart(state){
+                RadSvg3.selectAll("path").remove();
+                d3.csv("./wages-by-demographics-2021.csv").then(function (demographicData) {
+                    let filteredData = demographicData.filter(obj => (obj.State === selectedStateforContrast));
+                    let features = Array.from(new Set(demographicData.map(d => d.Race)));
+        
+                    let normalizationScales = {};
+                    features.forEach(feature => {
+                        normalizationScales[feature] = d3.scaleLinear()
+                            .domain([d3.min(demographicData.filter(d => d.Race === feature), d => +d.AverageWeeklyEarnings), d3.max(demographicData.filter(d => d.Race === feature), d => +d.AverageWeeklyEarnings)])
+                            .range([1, 9]);
+                    });
+        
+                    RadSvg3.selectAll("circle")
+                        .data(ticks)
+                        .join(
+                            enter => enter.append("circle")
+                                .attr("cx", Radwidth / 2)
+                                .attr("cy", Radheight / 2)
+                                .attr("fill", "none")
+                                .attr("stroke", "#aaaaaa")
+                                .attr("r", d => radialScale(d))
+                        );
+        
+                    function angleToCoordinate(angle, value){
+                        let x = Math.cos(angle) * radialScale(value);
+                        let y = Math.sin(angle) * radialScale(value);
+                        return {"x": Radwidth / 2 + x, "y": Radheight / 2 - y};
+                    }
+        
+                    let featureData = features.map((f, i) => {
+                        let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                        return {
+                            "name": f,
+                            "angle": angle,
+                            "line_coord": angleToCoordinate(angle, 10),
+                            "label_coord": angleToCoordinate(angle, 10.5)
+                        };
+                    });
+        
+                    RadSvg3.selectAll("line")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("line")
+                                .attr("x1", Radwidth / 2)
+                                .attr("y1", Radheight / 2)
+                                .attr("x2", d => d.line_coord.x)
+                                .attr("y2", d => d.line_coord.y)
+                                .attr("stroke","#aaaaaa")
+                        );
+        
+                    // draw axis label
+                    RadSvg3.selectAll(".axislabel")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("text")
+                                .attr("x", d => d.label_coord.x - 10)
+                                .attr("y", d => d.label_coord.y + 3)
+                                .text(d => d.name.length < 8 ? d.name : d.name.substr(0,3)+'..')
+                        );
+        
+                    let line = d3.line()
+                        .x(d => d.x)
+                        .y(d => d.y);
+        
+                    let colors = ["red","blue"];
+        
+                    let dataPoints = features.map(f => normalizationScales[f](filteredData.find(d => d.Race === f).AverageWeeklyEarnings));
+        
+                    RadSvg3.append("path")
+                        .datum(getPathCoordinates(dataPoints))
+                        .attr("d", line)
+                        .attr("stroke-width", 3)
+                        .attr("stroke", colors[0])
+                        .attr("fill", colors[0])
+                        .attr("stroke-opacity", 1)
+                        .attr("opacity", 0.7);
+    
+                    filteredData = demographicData.filter(obj => (obj.State === state));
+                    dataPoints = features.map(f => normalizationScales[f](filteredData.find(d => d.Race === f).AverageWeeklyEarnings));
+            
+                    RadSvg3.append("path")
+                        .datum(getPathCoordinates(dataPoints))
+                        .attr("d", line)
+                        .attr("stroke-width", 3)
+                        .attr("stroke", colors[1])
+                        .attr("fill", colors[1])
+                        .attr("stroke-opacity", 1)
+                        .attr("opacity", 0.7);
+        
+                    function getPathCoordinates(data_points){
+                        let coordinates = [];
+                        for (var i = 0; i < features.length; i++){
+                            let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                            coordinates.push(angleToCoordinate(angle, data_points[i]));
+                        }
+                        return coordinates;
+                    }
+                        
+                });
+                
+            }
+    
+            drawStackedBarChart('Alabama')
+            function drawStackedBarChart(state){
+                d3.csv("./wages-by-gender-2021.csv").then(function (genderData) {
+                    // Sample data
+                    const data = genderData.filter(obj => (obj.State === selectedStateforContrast) || (obj.State == state))
+                    // set the dimensions and margins of the graph
+                    const margin = {top: 10, right: 30, bottom: 30, left: 80},
+                        stackedWidth = 250 - margin.left - margin.right,
+                        stackedHeight = 250 - margin.top - margin.bottom;
+                    // append the svg object to the body of the page
+                    d3.select("#StackedBarChart").selectAll("*").remove();
+                    const stackedSvg = d3.select("#StackedBarChart")
+                      .append("svg")
+                        .attr("width", stackedWidth + margin.left + margin.right)
+                        .attr("height", stackedHeight + margin.top + margin.bottom)
+                      .append("g")
+                        .attr("transform", `translate(${margin.left},${margin.top})`);
+                    
+                    
+                    // List of subgroups = header of the csv files = states
+                    const subgroups = [...new Set(data.map(d => d.State))];
+                    
+                    // List of groups = gender
+                    const groups = [...new Set(data.map(d => d.Gender))];
+                
+                    // Add X axis
+                    const x = d3.scaleBand()
+                        .domain(groups)
+                        .range([0, stackedWidth])
+                        .padding([0.2]);
+                    stackedSvg.append("g")
+                      .attr("transform", `translate(0, ${stackedHeight})`)
+                      .call(d3.axisBottom(x).tickSizeOuter(0));
+                
+                    // Add Y axis
+                    const y = d3.scaleLinear()
+                      .domain([0, 3000])
+                      .range([stackedHeight, 0]);
+                    stackedSvg.append("g")
+                      .call(d3.axisLeft(y));
+                
+                    // color palette = one color per subgroup
+                    const color = d3.scaleOrdinal()
+                      .domain(subgroups)
+                      .range(['#e41a1c', '#377eb8', '#4daf4a', '#ff7f00', '#984ea3', '#ffff33']);
+                
+                    // stack the data --> stack per subgroup
+                    const stackedData = d3.stack()
+                      .keys(subgroups)
+                      .value((d, key) => d.AverageWeeklyEarnings)
+                      (data);
+                    
+                    // Show the bars
+                    stackedSvg.append("g")
+                      .selectAll("g")
+                      .data(stackedData)
+                      .join("g")
+                        .attr("fill", d => color(d.key))
+                        .attr("opacity", 1)
+                        .selectAll("rect")
+                        .data(d => d)
+                        .join("rect")
+                          .attr("x", d => x(d.data.Gender))
+                          .attr("y", d => y(d[1]))
+                          .attr("height", d => y(d[0]) - y(d[1]))
+                          .attr("width", x.bandwidth());
+                
+                    // Add legend
+                    const legend = stackedSvg.append("g")
+                      .attr("transform", `translate(${stackedWidth - 80}, 10)`);
+                
+                    legend.selectAll("rect")
+                      .data(subgroups)
+                      .join("rect")
+                      .attr("x", 100)
+                      .attr("y", (d, i) => i * 20)
+                      .attr("width", 15)
+                      .attr("height", 15)
+                      .attr("fill", d => color(d));
+                
+                    legend.selectAll("text")
+                      .data(subgroups)
+                      .join("text")
+                      .attr("x", 50)
+                      .attr("y", (d, i) => i * 20 + 12)
+                      .text(d => d)
+                      .attr("fill", "black");
+                    
+                    // Add title to the Age Group Radviz chart
+                    RadSvg1.append("text")
+                    .attr("x", Radwidth / 2)
+                    .attr("y", 10)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-weight", "bold")
+                    .text("Age Group Radviz");
+    
+                // Add title to the Demographic Radviz chart
+                RadSvg3.append("text")
+                    .attr("x", Radwidth / 2)
+                    .attr("y", 10)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-weight", "bold")
+                    .text("Demographic Radviz");
+    
+                // Add title to the Stacked Bar Chart
+                stackedSvg.append("text")
+                    .attr("x", 40)
+                    .attr("y", -2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-weight", "bold")
+                    .text("Stacked Bar Chart");
+    
+                // Add title to the Education Radviz chart
+                RadSvg4.append("text")
+                    .attr("x", Radwidth / 2)
+                    .attr("y", 10)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-weight", "bold")
+                    .text("Education Radviz");
+    
+                });
+            }
+    
+            plotEducationSpiderChart('Alabama')
+            function plotEducationSpiderChart(state){
+                RadSvg4.selectAll("path").remove();
+                d3.csv("./education_state-wise_2021.csv").then(function (educationGroupData) {
+                    let filteredData = educationGroupData.filter(obj => (obj.State === selectedStateforContrast) || (obj.State === state));
+                    let features = Object.keys(filteredData[0]).filter(element => element !== "State");
+                    let normalizationScales = {};
+                    features.forEach(feature => {
+                        normalizationScales[feature] = d3.scaleLinear()
+                            .domain([d3.min(educationGroupData, d => +d[feature]), d3.max(educationGroupData, d => +d[feature])])
+                            .range([1, 9]);
+                    });
+    
+                    console.log(filteredData)
+                    RadSvg4.selectAll("circle")
+                        .data(ticks)
+                        .join(
+                            enter => enter.append("circle")
+                                .attr("cx", Radwidth / 2)
+                                .attr("cy", Radheight / 2)
+                                .attr("fill", "none")
+                                .attr("stroke", "#aaaaaa")
+                                .attr("r", d => radialScale(d))
+                        );
+        
+                    function angleToCoordinate(angle, value){
+                        let x = Math.cos(angle) * radialScale(value);
+                        let y = Math.sin(angle) * radialScale(value);
+                        return {"x": Radwidth / 2 + x, "y": Radheight / 2 - y};
+                    }
+        
+                    let featureData = features.map((f, i) => {
+                        let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                        return {
+                            "name": f,
+                            "angle": angle,
+                            "line_coord": angleToCoordinate(angle, 10),
+                            "label_coord": angleToCoordinate(angle, 10.5)
+                        };
+                    });
+        
+                    RadSvg4.selectAll("line")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("line")
+                                .attr("x1", Radwidth / 2)
+                                .attr("y1", Radheight / 2)
+                                .attr("x2", d => d.line_coord.x)
+                                .attr("y2", d => d.line_coord.y)
+                                .attr("stroke","#aaaaaa")
+                        );
+        
+                    // draw axis label
+                    RadSvg4.selectAll(".axislabel")
+                        .data(featureData)
+                        .join(
+                            enter => enter.append("text")
+                                .attr("x", d => d.label_coord.x - 35)
+                                .attr("y", d => d.label_coord.y + 3)
+                                .text(d => d.name)
+                        );
+        
+                    let line = d3.line()
+                        .x(d => d.x)
+                        .y(d => d.y);
+        
+                    let colors = ["red","blue"];
+                    
+                    for(let i=0;i<filteredData.length;i++){
+                        let dataPoints = features.map(f => normalizationScales[f](filteredData[i][f]));
+                        RadSvg4.append("path")
+                            .datum(getPathCoordinates(dataPoints))
+                            .attr("d", line)
+                            .attr("stroke-width", 3)
+                            .attr("stroke", colors[i])
+                            .attr("fill", colors[i])
+                            .attr("stroke-opacity", 1)
+                            .attr("opacity", 0.7);
+                        }
+                    function getPathCoordinates(data_points){
+                        let coordinates = [];
+                        for (var i = 0; i < features.length; i++){
+                            let angle = (Math.PI / 2) + (2 * Math.PI * i / features.length);
+                            coordinates.push(angleToCoordinate(angle, data_points[i]));
+                        }
+                        return coordinates;
+                    }
+                });
+            }
+        }
+
+                    
+    </script>
+</body>
+</html>
